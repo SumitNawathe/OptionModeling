@@ -1,0 +1,4 @@
+.ipynb_checkpoints/
+__pycache__/
+asian_options_comp/
+*.ipynb
