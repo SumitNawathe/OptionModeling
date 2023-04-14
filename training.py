@@ -4,11 +4,13 @@ import torch.nn as nn
 import torch.optim as optim
 from typing import List, Dict, Tuple, Callable, Generator, Union, Any, Literal
 from architecture import DeltaHedgingModel, HedgingResiduals, BatchedHedgingResiduals, GenerationHedgingResiduals
+import timeit
 
 
 def lbfgs_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 5,
@@ -23,7 +25,7 @@ def lbfgs_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = HedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     residuals.perform_simulation()
     residuals.create_dhedges()
@@ -70,6 +72,7 @@ def lbfgs_training_loop(
 def adam_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 500,
@@ -84,7 +87,7 @@ def adam_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = HedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     residuals.perform_simulation()
     residuals.create_dhedges()
@@ -119,6 +122,7 @@ def adam_training_loop(
 def batched_adam_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 500,
@@ -134,7 +138,7 @@ def batched_adam_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = BatchedHedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     residuals.perform_simulation()
     residuals.create_dhedges()
@@ -169,6 +173,7 @@ def batched_adam_training_loop(
 def batched_lbfgs_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 5,
@@ -184,7 +189,7 @@ def batched_lbfgs_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = BatchedHedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     residuals.perform_simulation()
     residuals.create_dhedges()
@@ -244,6 +249,7 @@ def batched_lbfgs_training_loop(
 def generation_lbfgs_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 5,
@@ -258,7 +264,7 @@ def generation_lbfgs_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = GenerationHedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     print(f"Time: {timeit.default_timer() - time0}")
     
@@ -304,6 +310,7 @@ def generation_lbfgs_training_loop(
 def generation_adam_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
+    simul_func: Callable[[Tensor, List[Tensor]], Tensor],
     *dhedge_funcs: Callable[[Tensor, List[Tensor]], Tensor],
     nt: int = 10**3,
     ni: int = 500,
@@ -318,7 +325,7 @@ def generation_adam_training_loop(
     print(f"Simulation")
     time0 = timeit.default_timer()
     residuals = GenerationHedgingResiduals(option_params)
-    residuals.set_simulation(gbm_simulation, nt=nt)
+    residuals.set_simulation(simul_func, nt=nt)
     residuals.set_dhedges(*dhedge_funcs)
     print(f"Time: {timeit.default_timer() - time0}")
     
