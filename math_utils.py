@@ -19,6 +19,7 @@ def black_scholes_5p(
     1D tensors along second axis with same values (that is, will turn 
     x[i] into x'[i, _] = x[i]; assumes lower dimensions compatible)
     """    
+    # upscale params
     params = [p, k, r, m, sigma]
     dim = max(0 if type(x) in [int, float] else x.dim() for x in params)
     if dim != 0:
@@ -29,21 +30,36 @@ def black_scholes_5p(
             elif params[i].dim() < len(shape):
                 while params[i].dim() < len(shape):
                     params[i] = params[i].unsqueeze(-1)
-                params[i] = params[i].expand(shape)        
+                params[i] = params[i].expand(shape)
+    else:  # dim == 0
+        for i in range(len(params)):
+            params[i] = Tensor([params[i]])
     p, k, r, m, sigma = params
     
+    # useful values
     eps = torch.tensor(1e-15)
     ones_like_p = torch.ones(p.shape)
-    
     sigm = sigma * torch.sqrt(m)
     pvk = k * torch.exp(-r * m)
+    
+    # negative strike price case
+    isNeg = (k <= 0)
+    infd1 = torch.tensor(float('Inf')) * isNeg
+    infd1[infd1 != infd1] = 0 # d1 = infinity
+    infnd1 = 1 * isNeg # N(d1) = 1
+    infres = (p - pvk) * isNeg
+    pvk = abs(pvk) + 0.001 * (k == 0) # remove nonpositive entries; we will overwrite them later
+    
+    # normal black-scholes computation
     d1 = torch.log(p / pvk) / torch.maximum(sigm, eps) + 0.50 * sigm
     d2 = d1 - sigm
     normcdf = torch.distributions.normal.Normal(0, 1).cdf
     nd1 = normcdf(d1)
     nd2 = normcdf(d2)
     res = p * nd1 - pvk * nd2
-    return res, nd1, d1
+    
+    # combine cases
+    return res * ~isNeg + infres, nd1 * ~isNeg + infnd1, d1 * ~isNeg + infd1
 
 
 def gbm(
@@ -86,6 +102,7 @@ def black_scholes_2p(
     Standard Black-Scholes formula for vector arguments.
     Returns tuple of option price, N(d1), and d1.
     """
+    # upscale params
     params = [moneyness, vol_to_mat]
     dim = max(0 if type(x) in [int, float] else x.dim() for x in params)
     if dim != 0:
@@ -99,10 +116,20 @@ def black_scholes_2p(
                 params[i] = params[i].expand(shape)
     moneyness, vol_to_mat = params
     
+    # negative moneyness case
+    isNeg = (moneyness <= 0)
+    infd1 = torch.tensor(float('Inf')) * isNeg
+    infd1[infd1 != infd1] = 0 # d1 = infinity
+    infnd1 = 1 * isNeg # N(d1) = 1
+    infres = (1 - 1/moneyness) * isNeg # output = 1 - 1 / moneyness
+    moneyness = abs(moneyness) + 0.001 * (moneyness == 0) # remove nonpositive entries; we will overwrite them later
+    
+    # normal black-scholes computation
     d1 = torch.clamp(torch.log(moneyness), min=-1e15) / torch.clamp(vol_to_mat, min=1e-15) + 0.5 * vol_to_mat
     d2 = d1 - vol_to_mat
     normcdf = torch.distributions.normal.Normal(0, 1).cdf
     nd1, nd2 = normcdf(d1), normcdf(d2)
     res = nd1 - nd2 / moneyness
-    return res, nd1, d1
-
+    
+    # combine cases
+    return res * ~isNeg + infres, nd1 * ~isNeg + infnd1, d1 * ~isNeg + infd1

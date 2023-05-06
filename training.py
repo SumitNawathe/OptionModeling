@@ -109,7 +109,7 @@ def adam_training_loop(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if epoch % print_loss_freq == 0:
+        if epoch % print_loss_freq == 0 or epoch <= 5:
             print(f"{epoch=}, loss={loss.item()}")
     print(f"Time: {timeit.default_timer() - time0}")
 
