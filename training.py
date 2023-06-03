@@ -7,6 +7,11 @@ from architecture import DeltaHedgingModel, HedgingResiduals, BatchedHedgingResi
 import timeit
 
 
+#####################
+## STANDARD SYSTEM ##
+#####################
+
+
 def lbfgs_training_loop(
     model: DeltaHedgingModel,
     option_params: Tensor,
@@ -109,6 +114,7 @@ def adam_training_loop(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        del res
         if epoch % print_loss_freq == 0 or epoch <= 5:
             print(f"{epoch=}, loss={loss.item()}")
     print(f"Time: {timeit.default_timer() - time0}")
@@ -347,7 +353,7 @@ def generation_adam_training_loop(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if epoch % print_loss_freq == 0:
+        if epoch % print_loss_freq == 0 or epoch <= 5:
             print(f"{epoch=}, loss={loss.item()}")
     print(f"Time: {timeit.default_timer() - time0}")
     return loss.item()

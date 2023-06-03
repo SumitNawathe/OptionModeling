@@ -22,6 +22,11 @@ class DeltaHedgingModel(nn.Module):
         self.option_model = option_model
         self.hedging_models = nn.ModuleList(hedging_models)
 
+        
+#######################
+## Hedging Residuals ##
+#######################
+
 
 class HedgingResiduals():
     def __init__(self, option_params: Tensor):
@@ -79,3 +84,34 @@ class GenerationHedgingResiduals(HedgingResiduals):
     def perform_simulation(self) -> None:
         simul_results = self.simul_func(self.option_params.cpu(), **self.simul_params, use_gpu=True, rng_seed=torch.randint(10**9, (1,)).item())
         self.simul_results = list(map(lambda sr: sr.to(device=self.option_params.device), simul_results))
+
+
+###################
+## COMMON HEDGES ##
+###################
+
+
+def dp_hedge(option_params: Tensor, simul_result: List[Tensor]) -> Tensor:
+    p = simul_result[0]
+    return p[:, 1:] - p[:, :-1]
+
+
+def dp2_hedge(option_params: Tensor, simul_result: List[Tensor]) -> Tensor:
+    p = simul_result[0]
+    return (p[:, 1:] - p[:, :-1]) ** 2
+
+
+def db_hedge(option_params: Tensor, simul_result: List[Tensor]) -> Tensor:
+    _, _, db, _ = simul_result
+    return db
+
+
+def db2_hedge(option_params: Tensor, simul_result: List[Tensor]) -> Tensor:
+    _, _, db, m = simul_result
+    dt = m[:, :-1] - m[:, 1:]
+    return db**2 - dt
+
+
+def bs_pseudohedge(option_params: Tensor, simul_result: List[Tensor]) -> Tensor:
+    _, _, db, _ = simul_result
+    return torch.ones(db.shape)
