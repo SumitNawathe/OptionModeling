@@ -1,6 +1,6 @@
 import torch
 from torch import Tensor
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 def black_scholes_5p(
@@ -69,7 +69,8 @@ def gbm(
     m0: Tensor,
     nt: int,
     rng_seed: int = 12345,
-    use_gpu: bool = False
+    use_gpu: bool = False,
+    db: Optional[Tensor] = None
 ) -> Tuple[Tensor, Tensor, Tensor]:
     """
     Function to simulate geometric brownian motion.
@@ -87,7 +88,8 @@ def gbm(
     
     dt = m0 / nt
     m = torch.stack([m0x - torch.linspace(0.0, m0x, nt+1).to(**cast_t) for m0x in m0])
-    db = torch.diag(torch.sqrt(dt)) @ torch.randn((n, nt), device=('cuda' if use_gpu else dt.device)).to(**cast_t)
+    if db is None:
+        db = torch.diag(torch.sqrt(dt)) @ torch.randn((n, nt), device=('cuda' if use_gpu else dt.device)).to(**cast_t)
     brownian_motion = torch.diag(sigma) @ db
     drift = torch.diag( (mu - 0.5 * sigma**2) * dt ) @ torch.ones(db.shape).to(**cast_t)
     res = torch.hstack([p0.unsqueeze(-1), torch.diag(p0) @ torch.exp(brownian_motion + drift).cumprod(dim=1)])
@@ -133,3 +135,10 @@ def black_scholes_2p(
     
     # combine cases
     return res * ~isNeg + infres, nd1 * ~isNeg + infnd1, d1 * ~isNeg + infd1
+
+
+# def Linear0(*size):
+#     x = nn.Linear(*size)
+#     nn.init.zeros_(x.weight)
+#     nn.init.zeros_(x.bias)
+#     return x
